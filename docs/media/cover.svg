@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800" viewBox="0 0 1600 800">
+<rect width="1600" height="800" fill="#f8f9fc"/><path d="M64 85h25V30H64zm35 0h25V11H99zm35 0h25V48h-25" fill="#2446ed" transform="translate(0 24) scale(.55)"/>
+<g font-family="Arial,Helvetica,sans-serif" fill="#18213d"><text x="104" y="70" font-size="25" font-weight="bold" letter-spacing="-1.5">RANK LAB.</text><text x="64" y="156" font-size="13" letter-spacing="2" fill="#626b80">RETRIEVAL / TRAINING / EVALUATION</text><text x="1536" y="70" text-anchor="end" font-size="12" letter-spacing="2" fill="#626b80">RECORDED EXPERIMENT / 001</text></g>
+<path d="M64 105h1472M64 676h1472" stroke="#d9deeb"/>
+<g font-family="Arial Narrow,Arial,Helvetica,sans-serif" font-weight="bold" font-stretch="condensed" font-size="110" letter-spacing="-5" fill="#2446ed"><text x="58" y="317">FOLLOW</text><text x="58" y="430">THE RANK.</text></g>
+<g font-family="Arial,Helvetica,sans-serif" font-size="20" fill="#535c73"><text x="64" y="501">A real training run. A checkpoint restart.</text><text x="64" y="535">Every reserved query in view.</text></g>
+<g font-family="Arial,Helvetica,sans-serif" font-size="12" fill="#626b80"><text x="848" y="210" letter-spacing="1.5">RESERVED TEST / nDCG@10</text><text x="848" y="294">PRETRAINED</text><text x="848" y="371">BM25</text><text x="848" y="448">FINE-TUNED</text></g>
+<g fill="#d8dfef"><rect x="1010" y="277" width="400" height="23"/><rect x="1010" y="354" width="400" height="23"/><rect x="1010" y="431" width="400" height="23"/></g>
+<rect x="1010" y="277" width="258.03" height="23" fill="#7889c7"/><rect x="1010" y="354" width="265.85" height="23" fill="#7889c7"/><rect x="1010" y="431" width="270.03" height="23" fill="#2446ed"/>
+<g font-family="Arial,Helvetica,sans-serif" font-size="21" fill="#18213d"><text x="1536" y="296" text-anchor="end">0.6451</text><text x="1536" y="373" text-anchor="end">0.6646</text><text x="1536" y="450" text-anchor="end" fill="#2446ed">0.6751</text><text x="848" y="534" font-size="17" fill="#535c73">53 gains / 27 regressions / 220 unchanged</text><text x="848" y="564" font-size="13" fill="#626b80">Fine-tuned vs pretrained · nDCG@10 · 300 queries</text></g>
+<g font-family="Arial,Helvetica,sans-serif" font-size="14" fill="#535c73"><text x="64" y="734">5,183 documents</text><text x="430" y="734">78 optimizer steps</text><text x="798" y="734">22.7M trainable parameters</text><text x="1536" y="734" text-anchor="end">One benchmark. Visible trade-offs.</text></g>
+</svg>

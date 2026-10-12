@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "dataset": "BeIR/scifact",
+  "documents": 5183,
+  "test_queries": 300,
+  "train_queries": 727,
+  "validation_queries": 80,
+  "excluded_train_queries": 2,
+  "selected_epoch": 3,
+  "optimizer_steps": 78,
+  "trainable_parameters": 22713216,
+  "metrics": {
+    "fine_tuned": {
+      "mrr@10": 0.6285978835978836,
+      "ndcg@10": 0.6750722587305048,
+      "recall@10": 0.8347777777777777
+    },
+    "lexical": {
+      "mrr@10": 0.6339986772486772,
+      "ndcg@10": 0.6646172354026965,
+      "recall@10": 0.7816111111111111
+    },
+    "pretrained": {
+      "mrr@10": 0.6047248677248678,
+      "ndcg@10": 0.6450816521455776,
+      "recall@10": 0.7833333333333333
+    }
+  },
+  "base_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "base_revision": "1110a243fdf4706b3f48f1d95db1a4f5529b4d41",
+  "config": {
+    "batch_size": 32,
+    "device": "cuda",
+    "epochs": 3,
+    "learning_rate": 2e-05,
+    "max_length": 256,
+    "mixed_precision": true,
+    "seed": 1729,
+    "temperature": 0.05
+  },
+  "platform": "Windows",
+  "gpu": "NVIDIA GeForce RTX 5080",
+  "torch": "2.7.1+cu128",
+  "peak_cuda_allocated_bytes": 2943213568,
+  "weights_fingerprint": "33fdc1ece4a91a1739db5bc37bf883182ad32067970bba0ba1b41005892dbbf9",
+  "limits": [
+    "One seed/benchmark; not a universal best-model claim",
+    "Lexical MRR is higher; dense encoders apply a 256-wordpiece limit",
+    "CPU restart equivalence verified; uninterrupted GPU equivalence not compared"
+  ],
+  "gpu_vram_gb": 16,
+  "gpu_memory_type": "GDDR7",
+  "cpu": "AMD Ryzen 7 9800X3D",
+  "cpu_cores": 8,
+  "cpu_threads": 16,
+  "system_ram_gb": 32,
+  "operating_system": "Windows 11 Pro 10.0.26200",
+  "python": "3.11.15",
+  "cuda": "12.8"
+}
