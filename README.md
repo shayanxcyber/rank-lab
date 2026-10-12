@@ -10,6 +10,8 @@ A higher average score leaves an awkward question: which queries actually improv
 which became worse? This lab keeps the training record, the comparison and each ranked
 document connected, so you can follow that question all the way through.
 
+https://github.com/user-attachments/assets/fb29136d-a992-4f04-a806-d3d1321ac72b
+
 [Watch the 15-second film](docs/media/rank-lab.mp4) ·
 [Explore a real gain and regression](docs/CASE-STUDY.md) ·
 [Open the results explorer](https://shayanxcyber.github.io/rank-lab/)
