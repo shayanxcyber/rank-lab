@@ -786,10 +786,14 @@ h3 {
   color: var(--blue);
 }
 .query-id {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 35%;
+  overflow-wrap: anywhere;
   font-family: monospace;
   font-size: 9px;
   color: #788198;
-  white-space: nowrap;
+  white-space: normal;
 }
 .numeric {
   font-variant-numeric: tabular-nums;
@@ -1696,5 +1700,24 @@ body .query-id {
   .experiment-drop,
   .load-experiment {
     transition: none;
+  }
+}
+
+.inspector-header .eyebrow {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.inspector-header > div {
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  .table-query[data-long-id] {
+    flex-wrap: wrap;
+    gap: 5px 10px;
+  }
+  .table-query[data-long-id] .query-id {
+    flex-basis: 100%;
+    max-width: 100%;
   }
 }

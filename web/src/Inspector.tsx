@@ -66,7 +66,7 @@ export function Inspector({
   const abstract = (id: string) =>
     texts?.[id] ??
     (textError
-      ? "Abstract unavailable. Retry the document file above."
+      ? "Document text unavailable. Retry the file above."
       : "Loading recorded document text…");
   async function copyLink() {
     try {

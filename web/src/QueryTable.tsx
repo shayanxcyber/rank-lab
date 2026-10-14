@@ -63,6 +63,7 @@ export function QueryTable({
         cell: ({ row }) => (
           <button
             className="table-query"
+            data-long-id={row.original.id.length > 20 || undefined}
             onClick={() => onOpen(row.original)}
             data-query-trigger={row.original.id}
           >

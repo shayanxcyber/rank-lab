@@ -175,7 +175,7 @@ export function selectQueries(
       (!term ||
         q.text.toLocaleLowerCase().includes(term) ||
         q.id === id ||
-        q.id.toLocaleLowerCase() === term) &&
+        q.id.toLocaleLowerCase().includes(term)) &&
       (filter === "all" || outcome(delta(q, metric, baseline)) === filter),
   );
 }

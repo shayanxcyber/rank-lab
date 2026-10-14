@@ -79,6 +79,9 @@ describe("portable experiments", () => {
     expect(
       selectQueries(study.queries, "TICKET-1", "all", "ndcg@10", "pretrained"),
     ).toHaveLength(1);
+    expect(
+      selectQueries(study.queries, "tick", "all", "ndcg@10", "pretrained"),
+    ).toHaveLength(1);
   });
   it("rejects an altered document sidecar", async () => {
     const study = await fixture();
