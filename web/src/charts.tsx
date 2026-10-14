@@ -46,7 +46,7 @@ export function TrainingCharts({ study }: { study: Study }) {
         x: {
           label: "Optimizer step",
           domain: [1, study.summary.optimizer_steps],
-          ticks: [1, 26, 52, 78],
+          ticks: Math.min(5, study.summary.optimizer_steps),
         },
         y: {
           label:
@@ -55,7 +55,14 @@ export function TrainingCharts({ study }: { study: Study }) {
           zero: true,
         },
         marks: [
-          Plot.ruleX([2], { stroke: "#bb4d33", strokeDasharray: "4,4" }),
+          ...(study.training.resumed_after_step === null
+            ? []
+            : [
+                Plot.ruleX([study.training.resumed_after_step], {
+                  stroke: "#bb4d33",
+                  strokeDasharray: "4,4",
+                }),
+              ]),
           Plot.lineY(history, {
             x: "step",
             y: chart === "loss" ? "loss" : "gradient_norm",
@@ -73,7 +80,12 @@ export function TrainingCharts({ study }: { study: Study }) {
           }),
         ],
       }),
-    [history, chart, study.summary.optimizer_steps],
+    [
+      history,
+      chart,
+      study.summary.optimizer_steps,
+      study.training.resumed_after_step,
+    ],
   );
   const validationRef = usePlot(
     (width) =>
@@ -92,12 +104,21 @@ export function TrainingCharts({ study }: { study: Study }) {
         },
         x: {
           label: "Checkpoint (0 = frozen)",
-          domain: [0, 3],
-          ticks: [0, 1, 2, 3],
+          domain: [0, study.summary.config.epochs],
+          ticks: study.validation.map((row) => row.epoch),
         },
         y: {
           label: "Validation nDCG@10",
-          domain: [0.64, 0.72],
+          domain: [
+            Math.max(
+              0,
+              Math.min(...study.validation.map((row) => row.ndcg)) - 0.03,
+            ),
+            Math.min(
+              1,
+              Math.max(...study.validation.map((row) => row.ndcg)) + 0.03,
+            ),
+          ],
           grid: true,
           ticks: 4,
         },
@@ -142,12 +163,17 @@ export function TrainingCharts({ study }: { study: Study }) {
         <div
           ref={lossRef}
           role="img"
-          aria-label={`Recorded ${chart} for every optimizer step, with the restart after step two marked by a dashed line`}
+          aria-label={`Recorded ${chart} for ${study.summary.optimizer_steps} optimizer steps${study.training.resumed_after_step ? `; restart after step ${study.training.resumed_after_step} marked by a dashed line` : ""}`}
         />
         <p className="chart-caption">
-          <span className="dash-line" /> Restart after step{" "}
-          {study.training.resumed_after_step} · one batch per point. Loss is
-          noisy, rather than a smoothed improvement claim.
+          {study.training.resumed_after_step ? (
+            <>
+              <span className="dash-line" /> Restart after step{" "}
+              {study.training.resumed_after_step} ·{" "}
+            </>
+          ) : null}{" "}
+          One batch per point. Loss is noisy, rather than a smoothed improvement
+          claim.
         </p>
       </div>
       <div className="validation-chart">
@@ -158,7 +184,7 @@ export function TrainingCharts({ study }: { study: Study }) {
         <div
           ref={validationRef}
           role="img"
-          aria-label="Validation nDCG rises from 0.6599 for the frozen encoder to 0.7009 at epoch three"
+          aria-label={`Validation nDCG for the frozen encoder and ${study.summary.config.epochs} epochs; epoch ${study.summary.selected_epoch} selected`}
         />
         <p className="chart-caption">
           Epoch {study.summary.selected_epoch} selected before any reserved-test

@@ -3,6 +3,7 @@ import { Tabs } from "@base-ui/react/tabs";
 import { Accordion } from "@base-ui/react/accordion";
 import { ArrowDown, Check, ChevronDown, Link2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { verifyDocumentTexts } from "./data";
 import { DocumentIdentity } from "./presentation";
 import {
   methods,
@@ -11,6 +12,7 @@ import {
   metricName,
   points,
   delta,
+  queryLabel,
   type Study,
   type Query,
   type Metric,
@@ -40,26 +42,21 @@ export function Inspector({
     if (!query || texts) return;
     const controller = new AbortController();
     setTextError("");
-    fetch("./data/document-text.json", { signal: controller.signal })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Document abstracts could not load");
-        const bytes = await response.arrayBuffer();
-        const digest = Array.from(
-          new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
-        )
-          .map((v) => v.toString(16).padStart(2, "0"))
-          .join("");
-        if (digest !== study.document_text_sha256)
-          throw new Error("Document file identity differs from this study");
-        const value = JSON.parse(new TextDecoder().decode(bytes));
-        if (
-          Object.keys(value).length !== Object.keys(study.documents).length ||
-          Object.keys(study.documents).some(
-            (id) => typeof value[id] !== "string",
+    const bytes =
+      study.document_text_json !== undefined
+        ? Promise.resolve(
+            new TextEncoder().encode(study.document_text_json).buffer,
           )
-        )
-          throw new Error("Document abstracts are incomplete");
-        setTexts(value);
+        : fetch("./data/document-text.json", {
+            signal: controller.signal,
+          }).then((response) => {
+            if (!response.ok) throw new Error("Document texts could not load");
+            return response.arrayBuffer();
+          });
+    bytes
+      .then((value) => verifyDocumentTexts(study, value))
+      .then((value) => {
+        if (!controller.signal.aborted) setTexts(value);
       })
       .catch((error) => {
         if (error.name !== "AbortError") setTextError(error.message);
@@ -70,7 +67,7 @@ export function Inspector({
     texts?.[id] ??
     (textError
       ? "Abstract unavailable. Retry the document file above."
-      : "Loading recorded abstract…");
+      : "Loading recorded document text…");
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(location.href);
@@ -99,7 +96,7 @@ export function Inspector({
             <>
               <div className="inspector-header">
                 <span className="eyebrow">
-                  Reserved query / {query.id.padStart(4, "0")}
+                  Reserved query / {queryLabel(query.id)}
                 </span>
                 <div>
                   <button
@@ -119,9 +116,9 @@ export function Inspector({
               </div>
               <Dialog.Title className="query-title">{query.text}</Dialog.Title>
               <Dialog.Description className="inspector-description">
-                Recorded top ten for the same query and corpus. Relevance uses
-                the benchmark judgments; an unjudged result is not a confirmed
-                irrelevant result.
+                Recorded rankings for the same query and corpus, up to ten
+                results per method. Relevance uses the recorded judgments; an
+                unjudged result is not a confirmed irrelevant result.
               </Dialog.Description>
               <div
                 className={`query-summary ${delta(query, metric, baseline) < 0 ? "loss" : ""}`}
@@ -146,7 +143,7 @@ export function Inspector({
                 <div className="query-notice" role="alert">
                   {textError}
                   <button onClick={() => setRetry((v) => v + 1)}>
-                    Retry abstracts
+                    Retry document text
                   </button>
                 </div>
               )}
@@ -187,7 +184,10 @@ export function Inspector({
                                     <span className="rank-number">
                                       {String(index + 1).padStart(2, "0")}
                                     </span>
-                                    <DocumentIdentity title={doc.title} judgment={query.judgments[id]} />
+                                    <DocumentIdentity
+                                      title={doc.title}
+                                      judgment={query.judgments[id]}
+                                    />
                                     <ChevronDown size={14} />
                                   </Accordion.Trigger>
                                 </Accordion.Header>
@@ -237,13 +237,19 @@ export function Inspector({
                 </Tabs.Panel>
               </Tabs.Root>
               <div className="inspector-foot">
-                <span>Public SciFact benchmark material · recorded study</span>
+                <span>{study.summary.dataset} · recorded study</span>
                 <a
-                  href="https://huggingface.co/datasets/BeIR/scifact"
+                  href={
+                    study.summary.dataset.toLowerCase() === "beir/scifact"
+                      ? "https://huggingface.co/datasets/BeIR/scifact"
+                      : "https://github.com/shayanxcyber/rank-lab/blob/main/docs/CUSTOM-DATA.md"
+                  }
                   target="_blank"
                   rel="noreferrer"
                 >
-                  Dataset source ↗
+                  {study.summary.dataset.toLowerCase() === "beir/scifact"
+                    ? "Dataset source ↗"
+                    : "Custom data guide ↗"}
                 </a>
               </div>
             </>

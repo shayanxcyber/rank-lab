@@ -19,9 +19,11 @@ import {
   X,
 } from "lucide-react";
 import { Segments } from "./ui";
-import { selectQueries } from "./data";
+import { selectQueries, queriesCsv } from "./data";
+import { DownloadData } from "./DownloadData";
 import {
   delta,
+  queryLabel,
   score,
   points,
   outcome,
@@ -42,6 +44,7 @@ export function QueryTable({
   baseline: Method;
   onOpen: (q: Query) => void;
 }) {
+  const csv = useMemo(() => queriesCsv(queries), [queries]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [sorting, setSorting] = useState<SortingState>([
@@ -63,9 +66,7 @@ export function QueryTable({
             onClick={() => onOpen(row.original)}
             data-query-trigger={row.original.id}
           >
-            <span className="query-id">
-              Q{row.original.id.padStart(4, "0")}
-            </span>
+            <span className="query-id">{queryLabel(row.original.id)}</span>
             <span>{row.original.text}</span>
             <ArrowUpRight size={18} />
           </button>
@@ -227,29 +228,34 @@ export function QueryTable({
             ? `${table.getState().pagination.pageIndex * 10 + 1}–${Math.min((table.getState().pagination.pageIndex + 1) * 10, data.length)} of ${data.length} queries`
             : "0 queries"}
         </span>
-        <a href="./data/queries.csv" download>
-          Download results CSV ↗
-        </a>
-        <div className="pagination">
-          <button
-            aria-label="Previous page"
-            disabled={!table.getCanPreviousPage()}
-            onClick={() => table.previousPage()}
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <span>
-            {data.length ? table.getState().pagination.pageIndex + 1 : 0} /{" "}
-            {table.getPageCount()}
-          </span>
-          <button
-            aria-label="Next page"
-            disabled={!table.getCanNextPage()}
-            onClick={() => table.nextPage()}
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
+        <DownloadData
+          content={csv}
+          filename="queries.csv"
+          label="Download results CSV"
+          type="text/csv;charset=utf-8"
+        />
+        {data.length > 0 && (
+          <div className="pagination">
+            <button
+              aria-label="Previous page"
+              disabled={!table.getCanPreviousPage()}
+              onClick={() => table.previousPage()}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span>
+              {data.length ? table.getState().pagination.pageIndex + 1 : 0} /{" "}
+              {table.getPageCount()}
+            </span>
+            <button
+              aria-label="Next page"
+              disabled={!table.getCanNextPage()}
+              onClick={() => table.nextPage()}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

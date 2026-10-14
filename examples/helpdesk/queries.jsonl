@@ -1,0 +1,26 @@
+{"id": "train-retries-1", "text": "How can failed deliveries be retried without duplicate actions?", "split": "train"}
+{"id": "train-keys-2", "text": "What is the safe order for replacing a service key?", "split": "train"}
+{"id": "train-restore-3", "text": "How should I check a restored backup before using it?", "split": "train"}
+{"id": "train-limits-4", "text": "What should a client do after HTTP 429?", "split": "train"}
+{"id": "train-tls-5", "text": "How can I replace a certificate before it expires?", "split": "train"}
+{"id": "train-dns-6", "text": "Why does a changed DNS record still show its old address?", "split": "train"}
+{"id": "train-uploads-7", "text": "How can a large upload continue after a disconnection?", "split": "train"}
+{"id": "train-webhooks-8", "text": "How do I authenticate an incoming webhook?", "split": "train"}
+{"id": "train-logs-9", "text": "Which request fields should not appear in logs?", "split": "train"}
+{"id": "train-queues-10", "text": "When should a background worker acknowledge a message?", "split": "train"}
+{"id": "train-sessions-11", "text": "What should happen to sessions after a password change?", "split": "train"}
+{"id": "train-exports-12", "text": "How should multiline text be written to a CSV file?", "split": "train"}
+{"id": "train-retries-13", "text": "Why should a retried operation keep its identifier?", "split": "train"}
+{"id": "train-uploads-14", "text": "Which upload parts need to be sent after reconnecting?", "split": "train"}
+{"id": "train-queues-15", "text": "How can a second worker recover an abandoned message?", "split": "train"}
+{"id": "train-keys-16", "text": "When can an obsolete service key be revoked?", "split": "train"}
+{"id": "validation-tls-1", "text": "Verify a renewed certificate chain and hostname", "split": "validation"}
+{"id": "validation-restore-2", "text": "Recover data from a completed snapshot safely", "split": "validation"}
+{"id": "validation-logs-3", "text": "Redact authentication credentials from request logs", "split": "validation"}
+{"id": "validation-limits-4", "text": "Wait for the interval supplied by a throttled service", "split": "validation"}
+{"id": "test-webhooks-1", "text": "Prevent a repeated webhook from applying its action twice", "split": "test"}
+{"id": "test-dns-2", "text": "Explain cached DNS answers after a record update", "split": "test"}
+{"id": "test-sessions-3", "text": "Invalidate login state on both the server and client", "split": "test"}
+{"id": "test-exports-4", "text": "Create a portable comma separated report with quoted fields", "split": "test"}
+{"id": "test-uploads-5", "text": "Continue a partial file transfer using confirmed part identifiers", "split": "test"}
+{"id": "test-retries-6", "text": "Back off after a failed delivery and preserve operation identity", "split": "test"}

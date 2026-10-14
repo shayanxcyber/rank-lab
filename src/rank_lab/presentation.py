@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 from rank_lab.artifacts import atomic_json, sha256
-from rank_lab.data import load_scifact
+from rank_lab.experiments import load_prepared
 from rank_lab.metrics import evaluate_rankings
 
 
@@ -15,9 +15,15 @@ def export_presentation(
 ) -> dict:
     comparison_path = workspace / "comparison.json"
     comparison = json.loads(comparison_path.read_text(encoding="utf-8"))
+    if (destination / "study.json").exists():
+        previous = json.loads((destination / "study.json").read_text(encoding="utf-8"))
+        if previous.get("comparison_sha256") != sha256(comparison_path):
+            raise ValueError(
+                "Export destination contains a different experiment; choose another directory"
+            )
     split = json.loads((workspace / "split.json").read_text(encoding="utf-8"))
     training = json.loads((workspace / "training/training.json").read_text(encoding="utf-8"))
-    data, exclusions = load_scifact(workspace / "data").remove_test_duplicates()
+    data, exclusions = load_prepared(workspace)
     if (
         data.fingerprint != comparison["dataset_fingerprint"]
         or data.fingerprint != split["dataset_fingerprint"]
@@ -44,7 +50,9 @@ def export_presentation(
         recomputed = evaluate_rankings(run["rankings"], data.test_qrels)
         if recomputed["metrics"] != run["metrics"] or recomputed["per_query"] != run["per_query"]:
             raise ValueError("Recorded scores differ from the rankings and judgments")
-    for query_id in sorted(query_ids, key=int):
+    for query_id in sorted(
+        query_ids, key=lambda value: (0, int(value)) if value.isdecimal() else (1, value)
+    ):
         judgments = data.test_qrels[query_id]
         rankings = {method: comparison["runs"][method]["rankings"][query_id] for method in methods}
         documents.update(judgments)
@@ -61,8 +69,14 @@ def export_presentation(
             }
         )
     experiment = json.loads((workspace / "experiment.json").read_text(encoding="utf-8"))
+    selection_path = workspace / "training/selection.json"
+    selection = (
+        json.loads(selection_path.read_text(encoding="utf-8")) if selection_path.exists() else None
+    )
+    if selection and selection["epoch"] != comparison["selected_epoch"]:
+        raise ValueError("Checkpoint selection differs from the recorded comparison")
     summary = {
-        "dataset": "BeIR/scifact",
+        "dataset": experiment.get("dataset", "BeIR/scifact"),
         "documents": len(data.documents),
         "test_queries": len(query_ids),
         "train_queries": len(split["train"]),
@@ -79,11 +93,13 @@ def export_presentation(
         "gpu": experiment["device"],
         "torch": experiment["torch"],
         "peak_cuda_allocated_bytes": training["peak_cuda_allocated_bytes"],
-        "weights_fingerprint": training["weights"],
+        "weights_fingerprint": selection["weights_fingerprint"]
+        if selection
+        else training["weights"],
         "limits": [
-            "One seed and benchmark; incomplete relevance judgments",
-            "BM25 uses full text; dense encoders truncate at 256 wordpieces",
-            "CPU restart equivalence checked; no uninterrupted GPU comparison",
+            "One recorded experiment; unjudged documents receive zero gain",
+            f"BM25 uses full text; dense encoders truncate at {experiment['config'].get('max_length', 256)} wordpieces",
+            "Checkpoint resume is supported; this export does not establish GPU equivalence",
         ],
     }
     atomic_json(
@@ -127,6 +143,13 @@ def export_presentation(
         "exclusions": exclusions["excluded_training_queries"],
     }
     atomic_json(destination / "study.json", payload)
+    atomic_json(
+        destination / "rank-lab-study.json",
+        {
+            **payload,
+            "document_text_json": (destination / "document-text.json").read_bytes().decode("utf-8"),
+        },
+    )
     stream = io.StringIO(newline="")
     writer = csv.writer(stream)
     writer.writerow(
@@ -157,4 +180,5 @@ def export_presentation(
         "queries": len(queries),
         "documents": len(documents),
         "study_sha256": sha256(destination / "study.json"),
+        "bundle": "rank-lab-study.json",
     }

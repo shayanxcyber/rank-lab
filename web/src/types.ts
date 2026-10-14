@@ -14,6 +14,9 @@ export type Study = {
   comparison_sha256: string;
   dataset_fingerprint: string;
   summary: {
+    dataset: string;
+    platform?: string;
+    torch?: string;
     documents: number;
     train_queries: number;
     validation_queries: number;
@@ -24,8 +27,9 @@ export type Study = {
     metrics: Record<Method, Metrics>;
     base_model: string;
     base_revision: string;
+    weights_fingerprint: string;
     gpu: string;
-    peak_cuda_allocated_bytes: number;
+    peak_cuda_allocated_bytes: number | null;
     config: {
       batch_size: number;
       epochs: number;
@@ -39,6 +43,7 @@ export type Study = {
   queries: Query[];
   documents: Record<string, { title: string }>;
   document_text_sha256: string;
+  document_text_json?: string;
   training: {
     history: {
       epoch: number;
@@ -49,7 +54,7 @@ export type Study = {
     }[];
     initial_weights: string;
     final_weights: string;
-    resumed_after_step: number;
+    resumed_after_step: number | null;
     elapsed_seconds_resumed_invocation: number;
   };
   validation: { epoch: number; ndcg: number }[];
@@ -81,3 +86,6 @@ export const outcome = (value: number) =>
 export const score = (value: number) => value.toFixed(4);
 export const points = (value: number) =>
   `${value > 0 ? "+" : ""}${(value * 100).toFixed(2)}`;
+
+export const queryLabel = (id: string) =>
+  /^\d+$/.test(id) ? `Q${id.padStart(4, "0")}` : id;

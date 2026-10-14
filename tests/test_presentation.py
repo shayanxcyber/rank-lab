@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 import pytest
@@ -68,7 +69,9 @@ def recorded(tmp_path, monkeypatch):
         "training/epoch-3/validation.json",
     ):
         atomic_json(tmp_path / path, {"metrics": {"ndcg@10": 0.5}})
-    monkeypatch.setattr("rank_lab.presentation.load_scifact", lambda _: data)
+    monkeypatch.setattr(
+        "rank_lab.presentation.load_prepared", lambda _: (data, {"excluded_training_queries": []})
+    )
     return tmp_path
 
 
@@ -84,6 +87,24 @@ def test_export_is_offline_and_preserves_rankings_without_runtime_paths(recorded
     assert abstracts["3"] == "Public fixture abstract 3"
     assert str(recorded) not in (destination / "study.json").read_text()
     assert study["training"]["resumed_after_step"] == 2
+
+
+def test_bundle_preserves_document_file_bytes_across_newline_conventions(
+    recorded, tmp_path, monkeypatch
+):
+    def write_with_windows_document_newlines(path, value):
+        atomic_json(path, value)
+        if path.name == "document-text.json":
+            path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n").replace(b"\n", b"\r\n"))
+
+    monkeypatch.setattr("rank_lab.presentation.atomic_json", write_with_windows_document_newlines)
+    destination = tmp_path / "portable"
+    export_presentation(recorded, destination)
+    bundle = json.loads((destination / "rank-lab-study.json").read_text(encoding="utf-8"))
+    assert (
+        hashlib.sha256(bundle["document_text_json"].encode("utf-8")).hexdigest()
+        == bundle["document_text_sha256"]
+    )
 
 
 def test_export_rejects_data_identity_drift(recorded, tmp_path):
@@ -122,3 +143,16 @@ def test_export_rejects_scores_detached_from_rankings(recorded, tmp_path):
     atomic_json(path, report)
     with pytest.raises(ValueError, match="scores differ"):
         export_presentation(recorded, tmp_path / "presentation")
+
+
+def test_export_does_not_replace_another_comparison(recorded, tmp_path):
+    destination = tmp_path / "presentation"
+    export_presentation(recorded, destination)
+    original = (destination / "study.json").read_bytes()
+    path = recorded / "comparison.json"
+    comparison = json.loads(path.read_text(encoding="utf-8"))
+    comparison["judgment_scope"] = "A different recorded comparison"
+    atomic_json(path, comparison)
+    with pytest.raises(ValueError, match="different experiment"):
+        export_presentation(recorded, destination)
+    assert (destination / "study.json").read_bytes() == original

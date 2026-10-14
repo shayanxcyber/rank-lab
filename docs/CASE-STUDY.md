@@ -80,7 +80,7 @@ and the query field supports arrow-key navigation with one entry in the tab sequ
 
 ## Verified scope and remaining research
 
-Twenty-two backend tests and six explorer data tests pass. They cover artifact identity, split
+The backend and explorer data suites pass. They cover artifact identity, split
 isolation, graded metrics, known-positive masking, checkpoint behavior, offline export, score
 consistency, query search and rejection of malformed result records. The local app build passes.
 Selected desktop/mobile journeys have been inspected; this is not an exhaustive browser or
@@ -90,3 +90,38 @@ The first study remains one seed, split and benchmark. BM25 and the dense method
 effective text lengths. Latency under load, deployment behavior, broader-domain results and
 repeatability across multiple training seeds remain unmeasured. The public explorer displays
 the completed study; it does not serve the trained model or launch a GPU job.
+
+
+## Reusing the workflow with a different corpus
+
+Version 0.2 removes the source-editing step between a second experiment and this interface.
+The CLI accepts JSONL documents and queries, graded TSV judgments, and a TOML run configuration.
+Paths resolve relative to that configuration rather than the terminal's current directory.
+Explicit validation membership is respected; when omitted, the existing seeded text-group split
+supplies it. Empty inputs, duplicate identities, dangling labels and cross-split text overlap
+are rejected before model work.
+
+Preparation writes a canonical input snapshot and its byte identity. Later training, recovery,
+comparison and export read that snapshot, so moving the original input files does not silently
+change the experiment. Started workspaces cannot be prepared over, completed training and final
+comparisons refuse replacement, and resume checks the recorded configuration and split. CLI
+overrides are saved for subsequent workspace-based commands.
+
+The original committed SciFact result stays intact. New exports default to their own workspace,
+and an export destination holding a different comparison is rejected. A portable bundle embeds
+the exact document-text bytes alongside the rankings and training record. During Windows testing,
+a text read normalized CRLF newlines and broke the recorded hash; embedding the decoded original
+bytes fixed that mismatch. A cross-platform regression now exercises those exact bytes.
+
+The browser's local import checks document identity, rankings, graded per-query metrics,
+aggregate means, checkpoint selection and training-record coverage. It replaces the study as a
+unit, including downloads and document text, while invalid imports leave the current study
+available. Base UI handles the import dialog's focus, dismissal and transitions. Existing
+controls, query rows and plots adapt to the new counts and IDs; no second interface is maintained.
+
+The fictional helpdesk example exercised preparation, interruption after step two, a new-process
+resume to ten updates, validation selection, comparison, export and browser inspection. Its
+six test queries are deliberately simple: every method scored 1.0. This verifies a usable path
+through the implementation, without establishing that fine-tuning improves a real support corpus.
+The [custom-data guide](CUSTOM-DATA.md) supplies exact schemas, installation commands and recovery
+steps for running an independent experiment.

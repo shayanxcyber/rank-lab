@@ -1,0 +1,12 @@
+{"id": "retries", "title": "Delivery retries", "text": "A failed delivery is retried with exponential backoff. Use an operation ID so a retry does not apply the same action twice."}
+{"id": "keys", "title": "Rotating service keys", "text": "Create a replacement service key before retiring the old key. Move clients to the replacement, verify traffic, then revoke the old key."}
+{"id": "restore", "title": "Restoring a snapshot", "text": "Choose a completed snapshot, restore it into an isolated workspace, and verify its checksums before switching the application to restored data."}
+{"id": "limits", "title": "Request rate limits", "text": "A rate limit controls requests per interval. When a server returns 429, respect Retry-After and pause before retrying the request."}
+{"id": "tls", "title": "Certificate renewal", "text": "Renew a TLS certificate before its expiration date. Deploy the certificate with its intermediate chain and verify the hostname from a client."}
+{"id": "dns", "title": "DNS cache changes", "text": "A DNS record update may take time to appear because resolvers keep cached answers until the record time to live expires."}
+{"id": "uploads", "title": "Resuming an upload", "text": "Split a large upload into numbered parts. Save the confirmed part IDs and resume only missing parts after an interrupted connection."}
+{"id": "webhooks", "title": "Verifying webhook delivery", "text": "Validate the webhook signature over the original request bytes. Reject stale timestamps and deduplicate repeated delivery IDs."}
+{"id": "logs", "title": "Removing secrets from logs", "text": "Log request IDs and error codes. Redact service keys, session cookies and authorization headers before writing application logs."}
+{"id": "queues", "title": "Recovering a queue worker", "text": "A worker acknowledges a message only after storing the result. An expired lease allows another worker to retry, using the same operation ID."}
+{"id": "sessions", "title": "Ending a user session", "text": "A logout invalidates the server-side session and clears the client cookie. Password changes should also revoke older active sessions."}
+{"id": "exports", "title": "Exporting a report", "text": "Export a report as UTF-8 CSV with a header row. Escape quotes and preserve embedded newlines so spreadsheet readers can parse every field."}

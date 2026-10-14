@@ -1507,3 +1507,194 @@ body .query-id {
     transition: none;
   }
 }
+
+/* Local experiment controls. */
+.experiment-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.load-experiment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  background: transparent;
+  padding: 10px 13px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  transition:
+    background 0.18s,
+    border-color 0.18s;
+  white-space: nowrap;
+}
+.load-experiment:hover {
+  background: #edf0ff;
+  border-color: #a1aff4;
+}
+.experiment-dialog {
+  position: fixed;
+  z-index: 110;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(640px, calc(100vw - 36px));
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  background: #f8f9fc;
+  padding: 30px 36px;
+  border: 1px solid #d9deeb;
+  box-shadow: 0 30px 100px #18213d24;
+  border-radius: 8px;
+  transition:
+    transform 0.25s var(--ease),
+    opacity 0.2s;
+}
+.experiment-dialog[data-starting-style],
+.experiment-dialog[data-ending-style] {
+  opacity: 0;
+  transform: translate(-50%, -47%) scale(0.98);
+}
+.experiment-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+.experiment-dialog h2 {
+  font-size: clamp(29px, 4vw, 38px);
+  margin-bottom: 12px;
+}
+.experiment-dialog > p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+  max-width: 50ch;
+}
+.experiment-drop {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px dashed #aab6de;
+  background: #eef1ff;
+  padding: 28px 18px;
+  margin: 22px 0;
+  text-align: center;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.experiment-drop[data-dragging] {
+  background: #dee5ff;
+  border-color: var(--blue);
+}
+.experiment-drop > svg {
+  color: var(--blue);
+}
+.experiment-drop strong {
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.experiment-drop > span {
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+.experiment-drop .primary-action {
+  margin-top: 6px;
+  padding: 12px 18px;
+  font-size: 12px;
+}
+.experiment-instructions {
+  display: grid;
+  gap: 10px;
+}
+.experiment-instructions code {
+  display: block;
+  padding: 15px;
+  background: #e9ecf4;
+  color: #36405a;
+  font-size: 10px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.experiment-instructions p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+  margin: 0;
+}
+.experiment-instructions a {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 3px;
+}
+.experiment-error {
+  display: grid;
+  gap: 8px;
+  padding: 15px 18px;
+  border-left: 3px solid var(--rust);
+  background: #f9eae5;
+  font-size: 12px;
+  margin: -5px 0 20px;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.experiment-error small {
+  color: var(--muted);
+}
+.hero-meta span:last-child {
+  max-width: 55%;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 1100px) {
+  .masthead .run-badge {
+    display: none;
+  }
+  .masthead nav {
+    gap: 20px;
+  }
+}
+@media (max-width: 760px) {
+  .masthead nav {
+    display: none;
+  }
+  .experiment-actions {
+    gap: 10px;
+  }
+  .load-experiment {
+    font-size: 10px;
+    padding: 9px 10px;
+  }
+  .demo-reset {
+    font-size: 10px;
+  }
+  .experiment-dialog {
+    padding: 20px;
+  }
+  .hero-meta {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .hero-meta span:last-child {
+    max-width: 100%;
+    text-align: left;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .experiment-dialog,
+  .experiment-drop,
+  .load-experiment {
+    transition: none;
+  }
+}

@@ -38,8 +38,10 @@ class TrainingConfig:
             raise ValueError(
                 "Epochs, learning rate and temperature must be positive; batch size at least two"
             )
-        if self.max_length < 1:
-            raise ValueError("Sequence limit must be positive")
+        if not 1 <= self.max_length <= 512:
+            raise ValueError(
+                "Sequence limit must be between 1 and 512 for the supported MiniLM model"
+            )
         if self.device not in ("cpu", "cuda"):
             raise ValueError("Device must be cpu or cuda")
 

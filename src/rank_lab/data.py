@@ -20,6 +20,7 @@ class RetrievalData:
     queries: dict[str, str]
     train_qrels: dict[str, dict[str, int]]
     test_qrels: dict[str, dict[str, int]]
+    validation_qrels: dict[str, dict[str, int]] | None = None
 
     def validate(self) -> None:
         self._validate_references()
@@ -27,13 +28,22 @@ class RetrievalData:
         test_keys = {query_key(self.queries[key]) for key in self.test_qrels}
         if train_keys & test_keys:
             raise ValueError("Training and test query text groups overlap")
+        if self.validation_qrels is not None:
+            validation_keys = {query_key(self.queries[key]) for key in self.validation_qrels}
+            if validation_keys & (train_keys | test_keys):
+                raise ValueError("Validation query text groups overlap another split")
 
     def _validate_references(self) -> None:
         if not self.documents or not self.queries or not self.train_qrels or not self.test_qrels:
             raise ValueError("Corpus, queries and both judgment splits must be nonempty")
         if self.train_qrels.keys() & self.test_qrels.keys():
             raise ValueError("Training and test query IDs overlap")
-        for qrels in (self.train_qrels, self.test_qrels):
+        if self.validation_qrels is not None and (
+            not self.validation_qrels
+            or self.validation_qrels.keys() & (self.train_qrels.keys() | self.test_qrels.keys())
+        ):
+            raise ValueError("Validation split must be nonempty and have distinct query IDs")
+        for qrels in (self.train_qrels, self.test_qrels, self.validation_qrels or {}):
             for query_id, judgments in qrels.items():
                 if query_id not in self.queries:
                     raise ValueError(f"Unknown query in judgments: {query_id}")
@@ -72,13 +82,16 @@ class RetrievalData:
 
     @property
     def fingerprint(self) -> str:
+        value = {
+            "documents": self.documents,
+            "queries": self.queries,
+            "train_qrels": self.train_qrels,
+            "test_qrels": self.test_qrels,
+        }
+        if self.validation_qrels is not None:
+            value["validation_qrels"] = self.validation_qrels
         payload = json.dumps(
-            {
-                "documents": self.documents,
-                "queries": self.queries,
-                "train_qrels": self.train_qrels,
-                "test_qrels": self.test_qrels,
-            },
+            value,
             sort_keys=True,
             ensure_ascii=False,
             separators=(",", ":"),
@@ -89,6 +102,21 @@ class RetrievalData:
         self.validate()
         if not 0 < validation_fraction < 1:
             raise ValueError("Validation fraction must be between zero and one")
+        if self.validation_qrels is not None:
+            return {
+                "schema_version": 1,
+                "dataset_fingerprint": self.fingerprint,
+                "seed": seed,
+                "validation_fraction": None,
+                "train": sorted(self.train_qrels),
+                "validation": sorted(self.validation_qrels),
+                "test": sorted(self.test_qrels),
+                "train_groups": len({query_key(self.queries[key]) for key in self.train_qrels}),
+                "validation_groups": len(
+                    {query_key(self.queries[key]) for key in self.validation_qrels}
+                ),
+                "query_grouping": "Explicit splits; normalized query text must be disjoint",
+            }
         groups: dict[str, list[str]] = {}
         for query_id in sorted(self.train_qrels):
             groups.setdefault(query_key(self.queries[query_id]), []).append(query_id)

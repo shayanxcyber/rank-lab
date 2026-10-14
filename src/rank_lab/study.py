@@ -15,11 +15,17 @@ from rank_lab.artifacts import (
     fetch_assets,
     sha256,
 )
-from rank_lab.data import load_scifact
+from rank_lab.experiments import load_prepared
 
 
 def train_study(
-    workspace: Path, config, *, resume: bool = False, stop_after_steps: int | None = None
+    workspace: Path,
+    config,
+    *,
+    resume: bool = False,
+    stop_after_steps: int | None = None,
+    validation_fraction: float = 0.1,
+    name: str | None = None,
 ) -> dict:
     os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
@@ -32,21 +38,31 @@ def train_study(
     from rank_lab.retrieval import dense_evaluation
     from rank_lab.training import train, weights_fingerprint
 
-    fetch_assets(DATA_ASSETS, workspace / "data")
+    if not (workspace / "data/custom.json").exists():
+        fetch_assets(DATA_ASSETS, workspace / "data")
     fetch_assets(MODEL_ASSETS, workspace / "base-model")
-    data, exclusions = load_scifact(workspace / "data").remove_test_duplicates()
-    split = data.split(seed=config.seed)
+    data, exclusions = load_prepared(workspace)
+    split = data.split(seed=config.seed, validation_fraction=validation_fraction)
     output = workspace / "training"
     experiment_path = workspace / "experiment.json"
+    if (output / "training.json").exists():
+        if (
+            json.loads((output / "training.json").read_text(encoding="utf-8"))["status"]
+            == "completed"
+        ):
+            raise ValueError("Experiment is completed; choose a new workspace")
     if resume:
         if not (output / "training-state.pt").exists():
             raise ValueError("No checkpoint exists to resume")
         previous = json.loads(experiment_path.read_text(encoding="utf-8"))
+        if json.loads((workspace / "split.json").read_text(encoding="utf-8")) != split:
+            raise ValueError("Resume split differs from the existing experiment")
         if (
             previous["config"] != asdict(config)
             or previous["dataset_fingerprint"] != data.fingerprint
             or previous["base_revision"] != MODEL_REVISION
             or previous["torch"] != str(torch.__version__)
+            or previous["dataset"] != (name or "BeIR/scifact")
         ):
             raise ValueError(
                 "Resume configuration/data contract does not match the existing experiment"
@@ -60,7 +76,7 @@ def train_study(
     atomic_json(
         workspace / "experiment.json",
         {
-            "dataset": "BeIR/scifact",
+            "dataset": name or "BeIR/scifact",
             "dataset_fingerprint": data.fingerprint,
             "documents": len(data.documents),
             "train_queries": len(split["train"]),
@@ -159,7 +175,7 @@ def final_comparison(workspace: Path, *, device: str = "cuda") -> dict:
         raise ValueError(
             "Final comparison already exists; preserve this run rather than overwriting it"
         )
-    data, _ = load_scifact(workspace / "data").remove_test_duplicates()
+    data, _ = load_prepared(workspace)
     split = json.loads((workspace / "split.json").read_text(encoding="utf-8"))
     selection = json.loads((output / "selection.json").read_text(encoding="utf-8"))
     experiment = json.loads((workspace / "experiment.json").read_text(encoding="utf-8"))
@@ -191,7 +207,7 @@ def final_comparison(workspace: Path, *, device: str = "cuda") -> dict:
         "query_count": len(split["test"]),
         "selected_epoch": selection["epoch"],
         "runs": reports,
-        "judgment_scope": "BEIR SciFact relevance judgments; unjudged documents receive zero gain",
+        "judgment_scope": "Recorded relevance judgments; unjudged documents receive zero gain",
         "text_scope": "All methods receive title plus abstract; dense encoders truncate at the recorded wordpiece limit",
     }
     atomic_json(result_path, report)

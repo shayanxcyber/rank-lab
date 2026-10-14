@@ -42,7 +42,12 @@ def lexical_evaluation(data: RetrievalData, query_ids: list[str]) -> dict:
     started = time.perf_counter()
     index = BM25(data.documents)
     rankings = {key: index.rank(data.queries[key]) for key in query_ids}
-    qrels = {key: data.test_qrels.get(key, data.train_qrels.get(key, {})) for key in query_ids}
+    qrels = {
+        key: data.test_qrels.get(
+            key, (data.validation_qrels or {}).get(key, data.train_qrels.get(key, {}))
+        )
+        for key in query_ids
+    }
     report = evaluate_rankings(rankings, qrels)
     report.update(
         {
@@ -70,7 +75,12 @@ def dense_evaluation(
     rankings = {
         key: rank_scores(document_ids, scores[row].tolist()) for row, key in enumerate(query_ids)
     }
-    qrels = {key: data.test_qrels.get(key, data.train_qrels.get(key, {})) for key in query_ids}
+    qrels = {
+        key: data.test_qrels.get(
+            key, (data.validation_qrels or {}).get(key, data.train_qrels.get(key, {}))
+        )
+        for key in query_ids
+    }
     report = evaluate_rankings(rankings, qrels)
     report.update(
         {

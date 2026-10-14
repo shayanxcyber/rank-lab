@@ -1,0 +1,18 @@
+[experiment]
+name = "Helpdesk manuals · custom-data example"
+workspace = "../../runs/helpdesk"
+
+[data]
+documents = "documents.jsonl"
+queries = "queries.jsonl"
+judgments = "judgments.tsv"
+validation_fraction = 0.2
+
+[training]
+epochs = 2
+batch_size = 4
+learning_rate = 0.00005
+max_length = 128
+seed = 23
+device = "cpu"
+mixed_precision = false

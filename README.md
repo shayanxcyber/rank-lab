@@ -1,10 +1,12 @@
 # <img src="web/public/mark.svg" width="30" alt=""> Rank Lab
 
-**A real training run. A checkpoint restart. Every reserved query in view.**
+**Fine-tune a retrieval model on your data, compare it with baselines, and inspect each result.**
 
 Rank Lab connects retrieval training with an inspectable result: pinned inputs, grouped splits,
 gradient updates, restart state, validation selection and the actual documents behind each score.
 Its first study compares BM25, a frozen MiniLM encoder and a fine-tuned checkpoint on SciFact.
+Version 0.2 adds configurable local experiments with your own documents, queries and relevance
+judgments, plus portable results that open in the same explorer.
 
 A higher average score leaves an awkward question: which queries actually improved, and
 which became worse? This lab keeps the training record, the comparison and each ranked
@@ -12,7 +14,8 @@ document connected, so you can follow that question all the way through.
 
 https://github.com/user-attachments/assets/fb29136d-a992-4f04-a806-d3d1321ac72b
 
-[Watch the 15-second film](docs/media/rank-lab.mp4) ·
+[Watch the v0.1.0 film](docs/media/rank-lab.mp4) ·
+[Run your own experiment](docs/CUSTOM-DATA.md) ·
 [Explore a real gain and regression](docs/CASE-STUDY.md) ·
 [Open the results explorer](https://shayanxcyber.github.io/rank-lab/)
 
@@ -68,7 +71,9 @@ manually entered summary numbers.
 | Query grouping before training | Exact train/test text overlap can contaminate the comparison | Explicit training-only exclusions and a seeded grouped split; raw files and all test queries retained |
 | Masked contrastive negatives | Another relevant document in the batch should not be taught as a negative | Known-positive masking inside the loss computation |
 | Complete restart state | Loading weights alone does not resume the same optimizer trajectory | Model, optimizer, scheduler, batch cursor and RNG state; compatibility checks on resume |
-| Validation before test | Choosing a checkpoint from test results weakens the experiment | Three validation checkpoints, deterministic selection and model fingerprints checked before comparison |
+| Validation before test | Choosing a checkpoint from test results weakens the experiment | Per-epoch validation checkpoints, deterministic selection and model fingerprints checked before comparison |
+| Custom experiment inputs | Reusing the study required source edits | JSONL documents/queries, graded TSV labels and config-relative TOML settings |
+| Portable browser import | A new corpus should use the same inspection workflow | Local bundle validation, data-dependent views and current-study downloads |
 | Offline result export | Presentation numbers can drift from the saved rankings | Scores recomputed from judgments and top-ten results; identity and coverage checked |
 | Detail loaded on demand | Full abstracts made the opening payload unnecessarily large | Initial study reduced from about 5.38 MB to 0.89 MB; separate abstracts verified by SHA-256 |
 | One coherent inspection journey | A polished summary still leaves readers guessing about individual cases | All-query field, linked rankings/judgments, regression filters, responsive rows and keyboard navigation |
@@ -78,10 +83,10 @@ manually entered summary numbers.
 
 ```mermaid
 flowchart LR
-    A[Verified public inputs] --> B[Grouped splits]
+    A[Pinned demo or custom inputs] --> B[Validated query splits]
     B --> C[Train and checkpoint]
     C --> D[Select on validation]
-    D --> E[Compare all 300 test queries]
+    D --> E[Compare reserved test queries]
     E --> F[Offline verified export]
     F --> G[Static results explorer]
 ```
@@ -93,7 +98,7 @@ and the [study record](docs/STUDY.md) provides the exact configuration, hashes a
 
 The lab verifies pinned file identities, rejects exact normalized query overlap between splits,
 masks other known positive documents during contrastive learning, and stores model, optimizer,
-scheduler and RNG state at each checkpoint. Twenty-two backend tests and six explorer data tests
+scheduler and RNG state at each checkpoint. The backend and explorer data tests
 pass, including controlled CPU restart equivalence and checks that exported scores match rankings.
 The GPU run resumed successfully; GPU equivalence to a second uninterrupted run is untested.
 
@@ -140,7 +145,31 @@ For nDCG against the frozen encoder, **53 queries improve, 27 regress and 220 ar
 Those cases explain more than the average alone. The explorer preserves the distinctions between
 judged relevant, judged non-relevant and unjudged documents.
 
-## Train a fresh study
+## Run your own experiment
+
+Start with the [complete custom-data guide](docs/CUSTOM-DATA.md) and the original fictional
+[helpdesk example](examples/helpdesk). Prepare JSONL documents/queries and TSV relevance
+judgments, choose a TOML configuration, then run the same CLI through training and comparison.
+
+```powershell
+.venv/Scripts/python.exe -m rank_lab.cli prepare --config examples/helpdesk/experiment.toml
+.venv/Scripts/python.exe -m rank_lab.cli train --workspace runs/helpdesk --stop-after-steps 2
+.venv/Scripts/python.exe -m rank_lab.cli train --workspace runs/helpdesk --resume
+.venv/Scripts/python.exe -m rank_lab.cli compare --workspace runs/helpdesk
+.venv/Scripts/python.exe -m rank_lab.cli export --workspace runs/helpdesk --resumed-after-step 2
+```
+
+The guide includes installation, CPU/CUDA choices, input schemas, configuration overrides and
+troubleshooting. Later commands recover the prepared settings from the workspace. Choose
+**Open experiment** in the live explorer and select `runs/helpdesk/export/rank-lab-study.json`.
+The bundle stays in your browser. Counts, labels, charts, document inspection and CSV downloads
+follow the loaded result; **SciFact demo** returns to the original study.
+
+The small example exercises real gradients, checkpoint recovery and validation selection. Its
+simple fictional labels are a workflow demonstration, not a general retrieval benchmark.
+Custom data needs queries and relevance judgments; document upload alone does not supply them.
+
+## Repeat the original SciFact study
 
 ```powershell
 uv venv --python 3.11 .venv
@@ -154,16 +183,17 @@ uv run --no-project --python .venv/Scripts/python.exe python -m rank_lab.cli exp
 ```
 
 The commands use `runs/scifact` by default. For a CPU setup, install Torch from its CPU wheel
-index and pass `--device cpu` to training and comparison. Only the selected Windows GPU path
-and controlled CPU tests have been exercised here. Input downloads are public; model loading
+index and pass `--device cpu` to training and comparison. The original study used the selected Windows GPU path; the v0.2 helpdesk workflow was also exercised end to end on CPU and CUDA. Input downloads are public; model loading
 and gradients use verified local files. The final comparison refuses to overwrite an existing
 result. Use a new workspace for another study.
+
+In v0.2, export defaults to `WORKSPACE/export`; it no longer replaces the committed web demo.
+Open its `rank-lab-study.json` through **Open experiment**. An explicit destination containing a
+different comparison is rejected.
 
 Export is offline: it reads the completed comparison, checks data identity and recomputes the
 scores from saved rankings and judgments. It never encodes documents, trains or reevaluates the
 model. The restart annotation is supplied explicitly; only annotate a restart that actually ran.
-Stop the dev server before replacing the demo data on Windows so its file watcher cannot hold
-the existing file open.
 
 ## Check the implementation
 

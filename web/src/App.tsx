@@ -16,17 +16,19 @@ import {
   Check,
   ChevronDown,
   Copy,
-  Download,
   Info,
   RotateCcw,
 } from "lucide-react";
 import { Inspector } from "./Inspector";
+import { ExperimentLoader } from "./ExperimentLoader";
+import { DownloadData } from "./DownloadData";
 import { QueryTable } from "./QueryTable";
 import { Choice, Hint, Segments } from "./ui";
 import { parseStudy, outcomes } from "./data";
 import { RankMark as Mark, QueryGlyph } from "./presentation";
 import {
   delta,
+  queryLabel,
   metricName,
   metricDescription,
   methodName,
@@ -79,7 +81,7 @@ function QueryField({
       [...queries].sort(
         (a, b) =>
           delta(a, metric, baseline) - delta(b, metric, baseline) ||
-          Number(a.id) - Number(b.id),
+          a.id.localeCompare(b.id, undefined, { numeric: true }),
       ),
     [queries, metric, baseline],
   );
@@ -87,11 +89,18 @@ function QueryField({
   return (
     <div className="query-field">
       <div className="field-label">
-        <span>300 reserved queries</span>
+        <span>{queries.length.toLocaleString()} reserved queries</span>
         <span>Fine-tuned vs {methodName[baseline]}</span>
       </div>
       <div
         className="query-grid"
+        style={
+          ordered.length < 12
+            ? {
+                gridTemplateColumns: `repeat(${ordered.length}, minmax(0, 1fr))`,
+              }
+            : undefined
+        }
         aria-label="Query outcomes ordered from regressions to gains"
       >
         {ordered.map((q, index) => {
@@ -146,7 +155,7 @@ function QueryField({
                 <Tooltip.Positioner sideOffset={8}>
                   <Tooltip.Popup className="tooltip query-tooltip">
                     <b>
-                      Q{q.id} · {points(change)} pp
+                      {queryLabel(q.id)} · {points(change)} pp
                     </b>
                     <span>{q.text}</span>
                     <small>Click to inspect all three rankings</small>
@@ -171,9 +180,14 @@ function QueryField({
 }
 
 function Reproduce() {
-  const [target, setTarget] = useState("cuda");
+  const [target, setTarget] = useState("cpu");
+  const [dataset, setDataset] = useState("custom");
   const [copied, setCopied] = useState(false);
-  const command = `uv venv --python 3.11 .venv\nuv pip install --python .venv/Scripts/python.exe torch==2.7.1 --index-url https://download.pytorch.org/whl/${target === "cuda" ? "cu128" : "cpu"}\nuv pip install --python .venv/Scripts/python.exe -e ".[dev]"\n.venv/Scripts/python.exe -m rank_lab.cli prepare\n.venv/Scripts/python.exe -m rank_lab.cli train --device ${target} --stop-after-steps 2\n.venv/Scripts/python.exe -m rank_lab.cli train --device ${target} --resume\n.venv/Scripts/python.exe -m rank_lab.cli compare --device ${target}\n.venv/Scripts/python.exe -m rank_lab.cli export --resumed-after-step 2`;
+  const workspace = dataset === "custom" ? "runs/helpdesk" : "runs/scifact";
+  const prepareArgs =
+    dataset === "custom" ? " --config examples/helpdesk/experiment.toml" : "";
+  const command = `uv venv --python 3.11 .venv\nuv pip install --python .venv/Scripts/python.exe torch==2.7.1 --index-url https://download.pytorch.org/whl/${target === "cuda" ? "cu128" : "cpu"}\nuv pip install --python .venv/Scripts/python.exe -e ".[dev]\"\n.venv/Scripts/python.exe -m rank_lab.cli prepare${prepareArgs} --device ${target}\n.venv/Scripts/python.exe -m rank_lab.cli train --workspace ${workspace} --device ${target} --stop-after-steps 2\n.venv/Scripts/python.exe -m rank_lab.cli train --workspace ${workspace} --device ${target} --resume\n.venv/Scripts/python.exe -m rank_lab.cli compare --workspace ${workspace} --device ${target}\n.venv/Scripts/python.exe -m rank_lab.cli export --workspace ${workspace} --destination ${workspace}/export --resumed-after-step 2`;
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(command);
@@ -186,7 +200,16 @@ function Reproduce() {
   return (
     <div className="reproduce">
       <div className="reproduce-top">
-        <span className="eyebrow">Run a fresh study / Windows</span>
+        <span className="eyebrow">Run an experiment / Windows</span>
+        <Choice
+          label="Example data"
+          value={dataset}
+          onChange={setDataset}
+          items={[
+            { value: "custom", label: "Helpdesk example" },
+            { value: "scifact", label: "SciFact benchmark" },
+          ]}
+        />
         <Segments
           label="Training device"
           value={target}
@@ -208,14 +231,58 @@ function Reproduce() {
         <code>{command}</code>
       </pre>
       <p>
-        Downloads pinned public inputs. Use a new workspace for another study.
-        This explorer displays the recorded run; it does not run these commands.
+        The helpdesk fixture is fictional; SciFact downloads public benchmark
+        data. Use a new workspace for another completed experiment. This
+        explorer displays the recorded run; it does not run these commands.
       </p>
     </div>
   );
 }
 
+function Masthead({
+  study,
+  onLoad,
+  onReset,
+}: {
+  study: Study;
+  onLoad: (study: Study) => void;
+  onReset: () => void;
+}) {
+  const imported = typeof study.document_text_json === "string";
+  return (
+    <>
+      <a className="skip-link" href="#queries">
+        Skip to query results
+      </a>
+      <header className="masthead">
+        <a className="brand" href="#" aria-label="Rank Lab home">
+          <Mark />
+          <span>
+            RANK LAB<span className="brand-dot">.</span>
+          </span>
+        </a>
+        <nav aria-label="Main navigation">
+          <a href="#results">Results</a>
+          <a href="#queries">Queries</a>
+          <a href="#training">The run</a>
+          <a href="#protocol">Protocol</a>
+        </nav>
+        <span className="run-badge">
+          <span /> {imported ? "Local experiment" : "SciFact demo"}
+        </span>
+        <ExperimentLoader
+          onLoad={onLoad}
+          onReset={onReset}
+          imported={imported}
+        />
+      </header>
+    </>
+  );
+}
+
 function Experience({ study }: { study: Study }) {
+  const imported = typeof study.document_text_json === "string";
+  const restarted = study.training.resumed_after_step;
   const [metric, setMetric] = useState<Metric>("ndcg@10");
   const [baseline, setBaseline] = useState<Method>("pretrained");
   const [query, setQuery] = useState<Query | null>(
@@ -265,37 +332,21 @@ function Experience({ study }: { study: Study }) {
     );
   return (
     <Tooltip.Provider delay={220}>
-      <a className="skip-link" href="#queries">
-        Skip to query results
-      </a>
-      <header className="masthead">
-        <a className="brand" href="#" aria-label="Rank Lab home">
-          <Mark />
-          <span>
-            RANK LAB<span className="brand-dot">.</span>
-          </span>
-        </a>
-        <nav aria-label="Main navigation">
-          <a href="#results">Results</a>
-          <a href="#queries">Queries</a>
-          <a href="#training">The run</a>
-          <a href="#protocol">Protocol</a>
-        </nav>
-        <span className="run-badge">
-          <span /> Recorded / 001
-        </span>
-      </header>
       <main>
         {missingQuery && (
           <div className="query-notice" role="status">
-            That query is not in this reserved split. Choose one of the 300
-            recorded queries below.<button onClick={close}>Dismiss</button>
+            That query is not in this reserved split. Choose one of the{" "}
+            {study.queries.length} recorded queries below.
+            <button onClick={close}>Dismiss</button>
           </div>
         )}
         <section className="hero">
           <div className="hero-meta">
             <span>Retrieval / Training / Evaluation</span>
-            <span>SciFact · seed 1729 · 3 epochs</span>
+            <span>
+              {study.summary.dataset} · seed {study.summary.config.seed} ·{" "}
+              {study.summary.config.epochs} epochs
+            </span>
           </div>
           <div className="hero-layout">
             <div className="hero-copy">
@@ -306,9 +357,13 @@ function Experience({ study }: { study: Study }) {
                 THE RANK<span>.</span>
               </h1>
               <p className="hero-intro">
-                A real fine-tuning run. A checkpoint restart.
+                A recorded fine-tuning run.{" "}
+                {restarted
+                  ? "A checkpoint restart."
+                  : "Validation-led selection."}
                 <br />
-                Three methods, 300 queries, every result in view.
+                Three methods, {study.queries.length.toLocaleString()} queries,
+                every result in view.
               </p>
               <div className="hero-action">
                 <a className="primary-action" href="#queries">
@@ -318,13 +373,16 @@ function Experience({ study }: { study: Study }) {
                   className="text-button"
                   onClick={() => open(regression)}
                 >
-                  Inspect a regression <ArrowUpRight size={17} />
+                  {delta(regression, metric, baseline) < -1e-12
+                    ? "Inspect a regression"
+                    : "Inspect a query"}{" "}
+                  <ArrowUpRight size={17} />
                 </button>
               </div>
             </div>
             <div className="hero-evidence">
               <div className="evidence-top">
-                <span className="eyebrow">One run. Mixed outcomes.</span>
+                <span className="eyebrow">Query outcomes</span>
                 <div className="field-controls">
                   <Choice
                     label="Metric"
@@ -366,13 +424,19 @@ function Experience({ study }: { study: Study }) {
           </div>
           <div className="study-strip">
             <span>
-              <b>5,183</b> documents
+              <b>{study.summary.documents.toLocaleString()}</b> documents
             </span>
             <span>
-              <b>727 / 80 / 300</b> train / validation / test
+              <b>
+                {study.summary.train_queries} /{" "}
+                {study.summary.validation_queries} /{" "}
+                {study.summary.test_queries}
+              </b>{" "}
+              train / validation / test
             </span>
             <span>
-              <b>22.7M</b> trainable parameters
+              <b>{(study.summary.trainable_parameters / 1e6).toFixed(1)}M</b>{" "}
+              trainable parameters
             </span>
             <a href="#protocol">
               Read the experiment contract <ArrowUpRight size={16} />
@@ -383,7 +447,7 @@ function Experience({ study }: { study: Study }) {
           <Heading
             number="01"
             title="The result isn’t one number."
-            subtitle="The selected checkpoint improves average retrieval quality. The lexical baseline still wins on reciprocal rank."
+            subtitle="Compare the selected checkpoint with both baselines. Inspect the gains and regressions behind each average."
           />
           <div className="results-layout">
             <div className="result-callout">
@@ -408,7 +472,7 @@ function Experience({ study }: { study: Study }) {
                 <Info size={14} /> What this metric measures
               </Hint>
               <p className="result-footnote">
-                One seed and benchmark. Incomplete judgments.
+                One seed and dataset. Judgments may be incomplete.
                 <br />
                 No claim that fine-tuning always wins.
               </p>
@@ -446,7 +510,7 @@ function Experience({ study }: { study: Study }) {
                             ? "Full-text lexical ranking"
                             : method === "pretrained"
                               ? "Pinned MiniLM, frozen weights"
-                              : "Epoch 3, validation selected"}
+                              : `Epoch ${study.summary.selected_epoch}, validation selected`}
                         </small>
                       </th>
                       {(["ndcg@10", "recall@10", "mrr@10"] as Metric[]).map(
@@ -480,7 +544,8 @@ function Experience({ study }: { study: Study }) {
               </table>
               <p className="table-note">
                 Higher is better for all three metrics. Dense inputs truncate at
-                256 wordpieces; BM25 receives full title + abstract.
+                {study.summary.config.max_length} wordpieces; BM25 receives full
+                document text.
               </p>
             </div>
           </div>
@@ -489,7 +554,7 @@ function Experience({ study }: { study: Study }) {
           <Heading
             number="02"
             title="Start with a query. Follow the evidence."
-            subtitle="Search all 300 outcomes, look at what moved, and open the rankings behind each score."
+            subtitle={`Search all ${study.queries.length} outcomes, look at what moved, and open the rankings behind each score.`}
           />
           <div className="section-controls">
             <Choice
@@ -520,8 +585,12 @@ function Experience({ study }: { study: Study }) {
         <section id="training" className="training-section">
           <Heading
             number="03"
-            title="A stop is part of the story."
-            subtitle="The process stopped after two optimizer steps. A fresh process loaded the checkpoint and completed all 78."
+            title="Training and checkpoint recovery."
+            subtitle={
+              restarted
+                ? `Stopped after step ${restarted}, resumed from its checkpoint and completed ${study.summary.optimizer_steps} updates.`
+                : `Completed ${study.summary.optimizer_steps} updates with validation before the reserved test comparison.`
+            }
           />
           <div className="checkpoint-track">
             <div>
@@ -533,20 +602,29 @@ function Experience({ study }: { study: Study }) {
               <span className="checkpoint-symbol">
                 <RotateCcw size={22} />
               </span>
-              <b>Stop at step 2</b>
+              <b>
+                {restarted ? `Stop at step ${restarted}` : "Save checkpoint"}
+              </b>
               <small>Model · optimizer · scheduler · RNG</small>
             </div>
             <div>
               <span className="checkpoint-symbol">03</span>
-              <b>Resume → step 78</b>
-              <small>Three validation checkpoints</small>
+              <b>
+                {restarted ? "Resume" : "Train"} → step{" "}
+                {study.summary.optimizer_steps}
+              </b>
+              <small>
+                {study.summary.config.epochs} validation checkpoints
+              </small>
             </div>
             <div>
               <span className="checkpoint-symbol">
                 <Check size={23} />
               </span>
               <b>Freeze the choice</b>
-              <small>Epoch 3 → reserved test</small>
+              <small>
+                Epoch {study.summary.selected_epoch} → reserved test
+              </small>
             </div>
           </div>
           <Suspense
@@ -561,27 +639,35 @@ function Experience({ study }: { study: Study }) {
           <div className="run-details">
             <span>
               <b>
-                {(study.summary.peak_cuda_allocated_bytes / 1024 ** 3).toFixed(
-                  2,
-                )}{" "}
-                GiB
+                {study.summary.peak_cuda_allocated_bytes === null
+                  ? "—"
+                  : `${(study.summary.peak_cuda_allocated_bytes / 1024 ** 3).toFixed(2)} GiB`}
               </b>{" "}
-              peak allocated CUDA memory
+              {study.summary.peak_cuda_allocated_bytes === null
+                ? "CUDA memory not measured on CPU"
+                : "peak allocated CUDA memory"}
             </span>
             <span>
               <b>
                 {study.training.elapsed_seconds_resumed_invocation.toFixed(2)} s
               </b>{" "}
-              resumed invocation + validation
+              {restarted
+                ? "resumed invocation + validation"
+                : "training invocation + validation"}
             </span>
             <span>
-              <b>RTX 5080</b> Windows · Torch 2.7.1 + cu128
+              <b>{study.summary.gpu}</b> {study.summary.platform} · Torch{" "}
+              {study.summary.torch}
             </span>
           </div>
           <p className="run-limit">
-            The timer excludes downloads, baseline evaluation and the first two
-            steps. Exact restart equivalence passes on a controlled CPU fixture;
-            a second uninterrupted GPU run was not compared.
+            The timer covers the recorded training invocation and validation,
+            excluding downloads and baseline preparation.{" "}
+            {restarted
+              ? `Earlier work before the restart at step ${restarted} is not included.`
+              : "No restart is annotated for this run."}{" "}
+            This record does not establish equivalence to an uninterrupted GPU
+            run.
           </p>
         </section>
         <section id="protocol" className="protocol-section">
@@ -603,20 +689,31 @@ function Experience({ study }: { study: Study }) {
                   body: (
                     <>
                       <p>
-                        The official training split contained two queries with
-                        exactly the same normalized text as test queries. They
-                        were removed only from training. The raw files and all
-                        300 test queries were preserved.
+                        Train, validation and test query groups are kept
+                        separate. This run retains {study.summary.test_queries}{" "}
+                        reserved test queries.{" "}
+                        {study.exclusions.length > 0
+                          ? `${study.exclusions.length} training queries with exact normalized test text were excluded.`
+                          : "No training exclusions were needed."}
                       </p>
                       <div className="split-bar">
-                        <span style={{ flex: 727 }}>727 train</span>
-                        <span style={{ flex: 80 }}>80 val</span>
-                        <span style={{ flex: 300 }}>300 test</span>
+                        <span style={{ flex: study.summary.train_queries }}>
+                          {study.summary.train_queries} train
+                        </span>
+                        <span
+                          style={{ flex: study.summary.validation_queries }}
+                        >
+                          {study.summary.validation_queries} val
+                        </span>
+                        <span style={{ flex: study.summary.test_queries }}>
+                          {study.summary.test_queries} test
+                        </span>
                       </div>
                       <p className="small-copy">
-                        Casefold + collapsed whitespace groups, seed 1729. This
-                        checks exact duplicates, rather than semantic
-                        paraphrases or the base model’s pretraining exposure.
+                        Casefold + collapsed whitespace groups, seed{" "}
+                        {study.summary.config.seed}. This checks exact
+                        duplicates, rather than semantic paraphrases or the base
+                        model’s pretraining exposure.
                       </p>
                       {study.exclusions.map((e) => (
                         <div key={e.train_id} className="exclusion">
@@ -633,33 +730,35 @@ function Experience({ study }: { study: Study }) {
                   body: (
                     <>
                       <p>
-                        All 22,713,216 MiniLM parameters are trainable. Mean
-                        pooling, normalized vectors, in-batch contrastive loss,
-                        and masking of other known relevant documents from
-                        negative columns.
+                        All{" "}
+                        {study.summary.trainable_parameters.toLocaleString()}{" "}
+                        encoder parameters are trainable. Mean pooling,
+                        normalized vectors, in-batch contrastive loss, and
+                        masking of other known relevant documents from negative
+                        columns.
                       </p>
                       <dl className="config-grid">
                         <div>
                           <dt>Batch</dt>
-                          <dd>32</dd>
+                          <dd>{study.summary.config.batch_size}</dd>
                         </div>
                         <div>
                           <dt>AdamW rate</dt>
-                          <dd>2 × 10⁻⁵</dd>
+                          <dd>{study.summary.config.learning_rate}</dd>
                         </div>
                         <div>
                           <dt>Temperature</dt>
-                          <dd>0.05</dd>
+                          <dd>{study.summary.config.temperature}</dd>
                         </div>
                         <div>
                           <dt>Token limit</dt>
-                          <dd>256</dd>
+                          <dd>{study.summary.config.max_length}</dd>
                         </div>
                       </dl>
                       <p className="small-copy">
-                        Unjudged documents can still be relevant. Bfloat16
-                        autocast, gradient clipping at 1, linear warmup and
-                        decay.
+                        Unjudged documents can still be relevant. Training uses
+                        gradient clipping at 1, linear warmup and decay;
+                        precision follows the recorded configuration.
                       </p>
                     </>
                   ),
@@ -686,7 +785,7 @@ function Experience({ study }: { study: Study }) {
                         </div>
                         <div>
                           <dt>Selected tensor fingerprint</dt>
-                          <dd>{study.training.final_weights}</dd>
+                          <dd>{study.summary.weights_fingerprint}</dd>
                         </div>
                         <div>
                           <dt>Recorded comparison SHA-256</dt>
@@ -698,20 +797,20 @@ function Experience({ study }: { study: Study }) {
                 },
                 {
                   id: "limits",
-                  title: "A focused benchmark, with trade-offs.",
+                  title: "One experiment, with trade-offs.",
                   body: (
                     <>
                       <p>
                         Metrics are equal query means over the full
-                        5,183-document corpus. Stable document-ID ordering
-                        resolves exact score ties. Unjudged documents receive
-                        zero gain.
+                        {study.summary.documents.toLocaleString()}-document
+                        corpus. Stable document-ID ordering resolves exact score
+                        ties. Unjudged documents receive zero gain.
                       </p>
                       <p>
                         BM25 uses full text while the encoders truncate. One
-                        seed, one small scientific-retrieval benchmark, and no
-                        latency competition or broad accuracy claim. The
-                        scientific claims are benchmark queries, not advice.
+                        seed and dataset are an experiment rather than a broad
+                        quality or latency claim. Relevance judgments may be
+                        incomplete.
                       </p>
                     </>
                   ),
@@ -736,9 +835,13 @@ function Experience({ study }: { study: Study }) {
         <section className="closing">
           <div className="closing-top">
             <span className="eyebrow">Built to be inspected.</span>
-            <a href="./data/study.json" download className="text-button">
-              Recorded study JSON <Download size={16} />
-            </a>
+            <DownloadData
+              content={JSON.stringify(study, null, 2)}
+              filename={
+                imported ? "rank-lab-study.json" : "recorded-study.json"
+              }
+              label={imported ? "Download experiment" : "Recorded study JSON"}
+            />
           </div>
           <p>
             BETTER RANKINGS.
@@ -747,11 +850,15 @@ function Experience({ study }: { study: Study }) {
           </p>
           <div className="closing-bottom">
             <a
-              href="https://huggingface.co/datasets/BeIR/scifact"
+              href={
+                imported
+                  ? "https://github.com/shayanxcyber/rank-lab/blob/main/docs/CUSTOM-DATA.md"
+                  : "https://huggingface.co/datasets/BeIR/scifact"
+              }
               target="_blank"
               rel="noreferrer"
             >
-              SciFact / BEIR ↗
+              {imported ? "Custom data guide ↗" : "SciFact / BEIR ↗"}
             </a>
             <a
               href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2"
@@ -806,7 +913,22 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       {study ? (
-        <Experience study={study} />
+        <>
+          <Masthead
+            study={study}
+            onLoad={(next) => {
+              const url = new URL(location.href);
+              url.searchParams.delete("q");
+              history.replaceState(null, "", url);
+              setStudy(next);
+            }}
+            onReset={() => {
+              setStudy(null);
+              setRetry((value) => value + 1);
+            }}
+          />
+          <Experience key={study.comparison_sha256} study={study} />
+        </>
       ) : (
         <div className="load-screen">
           <div className="brand">
