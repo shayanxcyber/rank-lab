@@ -2,19 +2,20 @@
 
 **Fine-tune a retrieval model on your data, compare it with baselines, and inspect each result.**
 
-Rank Lab connects retrieval training with an inspectable result: pinned inputs, grouped splits,
-gradient updates, restart state, validation selection and the actual documents behind each score.
-Its first study compares BM25, a frozen MiniLM encoder and a fine-tuned checkpoint on SciFact.
+I built Rank Lab to see how fine-tuning changes individual search results. It includes the
+training workflow, checkpoint recovery, baseline comparisons and a browser explorer for the
+ranked documents. The first study compares BM25, a frozen MiniLM encoder and a fine-tuned
+checkpoint on SciFact.
 Version 0.2 adds configurable local experiments with your own documents, queries and relevance
 judgments, plus portable results that open in the same explorer.
 
-A higher average score leaves an awkward question: which queries actually improved, and
-which became worse? This lab keeps the training record, the comparison and each ranked
-document connected, so you can follow that question all the way through.
+On SciFact, the average improved, while 27 of the 300 test queries got worse. You can inspect
+those regressions alongside the gains, with the rankings and relevance judgments for each query.
+
+## Demo
 
 https://github.com/user-attachments/assets/fb29136d-a992-4f04-a806-d3d1321ac72b
 
-[Watch the v0.1.0 film](docs/media/rank-lab.mp4) ·
 [Run your own experiment](docs/CUSTOM-DATA.md) ·
 [Explore a real gain and regression](docs/CASE-STUDY.md) ·
 [Open the results explorer](https://shayanxcyber.github.io/rank-lab/)
@@ -61,9 +62,9 @@ or a general experiment tracker. The committed explorer works without credential
 
 ## What I built, and why
 
-The project spans the training workflow, its recorded-result contract and the interface used
-to investigate it. Those pieces share identities and measurements rather than relying on
-manually entered summary numbers.
+I kept the training results and browser data in the same workflow. The exporter calculates
+the displayed scores from saved rankings and judgments, and checks which inputs and checkpoint
+produced them.
 
 | Engineering choice | Problem it addresses | Implemented behavior |
 | --- | --- | --- |
@@ -76,7 +77,7 @@ manually entered summary numbers.
 | Portable browser import | A new corpus should use the same inspection workflow | Local bundle validation, data-dependent views and current-study downloads |
 | Offline result export | Presentation numbers can drift from the saved rankings | Scores recomputed from judgments and top-ten results; identity and coverage checked |
 | Detail loaded on demand | Full abstracts made the opening payload unnecessarily large | Initial study reduced from about 5.38 MB to 0.89 MB; separate abstracts verified by SHA-256 |
-| One coherent inspection journey | A polished summary still leaves readers guessing about individual cases | All-query field, linked rankings/judgments, regression filters, responsive rows and keyboard navigation |
+| Per-query inspection | An average does not explain which queries changed | All-query field, linked rankings/judgments, regression filters, responsive rows and keyboard navigation |
 
 <details>
 <summary>How the pieces connect</summary>
@@ -108,8 +109,8 @@ The local training run and CPU regression tests ran on this workstation:
 
 | Component | Specification |
 | --- | --- |
-| GPU | NVIDIA GeForce RTX 5080 — **16 GB GDDR7 VRAM** |
-| CPU | AMD Ryzen 7 9800X3D — 8 cores / 16 threads |
+| GPU | NVIDIA GeForce RTX 5080, **16 GB GDDR7 VRAM** |
+| CPU | AMD Ryzen 7 9800X3D, 8 cores / 16 threads |
 | System memory | 32 GB RAM (2 × 16 GB) |
 | Operating system | Windows 11 Pro, version 10.0.26200 |
 | Training runtime | Python 3.11.15, PyTorch 2.7.1+cu128, CUDA 12.8 |
